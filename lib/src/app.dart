@@ -1,7 +1,8 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart';
-import 'tts.dart'; // Import the TTS functionality
+import 'tts.dart';
+import 'sr.dart';
 
 class Samigo extends StatelessWidget {
   const Samigo({super.key});
@@ -10,7 +11,11 @@ class Samigo extends StatelessWidget {
   Widget build(BuildContext context) {
     return const MaterialApp(
       title: 'Samigo',
-      home: Bot(),
+      home: Scaffold(
+        body: Center(
+          child: Bot(),
+        ),
+      ),
     );
   }
 }
@@ -27,11 +32,26 @@ class BotState extends State<Bot> {
   final ScrollController _scrollController = ScrollController();
   final FocusNode _focusNode = FocusNode();
   final List<String> _messages = <String>[];
-  final TTS _tts = TTS(); // Create a TTS instance
   bool _isLoading = false;
-  bool _toSpeech = true; // Enable or disable TTS responses
+  bool _toSpeech = false; // For TTS toggle
+  bool _speechEnabled = false; // For speech recognition toggle
 
   final String apiUrl = 'https://samigo.vercel.app/command';
+
+  late TTS tts;
+  late SpeechRecognizer speechRecognizer;
+
+  @override
+  void initState() {
+    super.initState();
+    tts = TTS();
+    speechRecognizer = SpeechRecognizer();
+    speechRecognizer.initialize().then((_) {
+      setState(() {
+        _speechEnabled = true;
+      });
+    });
+  }
 
   Future<void> _sendMessage(String message) async {
     if (message.isEmpty) {
@@ -60,16 +80,14 @@ class BotState extends State<Bot> {
           _messages.add('Samigo: $data');
         });
         if (_toSpeech) {
-          await _tts.speak(data); // Use TTS to speak the response
+          tts.speak(data);
         }
       } else {
-        final errorMessage =
-            'Error : ${response.statusCode} - ${response.body}';
         setState(() {
-          _messages.add(errorMessage);
+          _messages.add('Error : ${response.statusCode} - ${response.body}');
         });
         if (_toSpeech) {
-          await _tts.speak("An error occurred while processing your request.");
+          tts.speak('There was an error processing your request.');
         }
       }
     } catch (e) {
@@ -77,7 +95,7 @@ class BotState extends State<Bot> {
         _messages.add('Error : $e');
       });
       if (_toSpeech) {
-        await _tts.speak("An error occurred while processing your request.");
+        tts.speak('There was an error processing your request.');
       }
     } finally {
       _textController.clear();
@@ -96,88 +114,100 @@ class BotState extends State<Bot> {
     );
   }
 
+  void _onSpeechResult(String words) {
+    _textController.text = words;
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Samigo'),
-        actions: [
-          IconButton(
-            icon: Icon(
-              _toSpeech ? Icons.volume_up : Icons.volume_off,
-            ),
-            onPressed: () {
-              setState(() {
-                _toSpeech = !_toSpeech;
-              });
-            },
-          ),
-        ],
-      ),
-      body: Column(
-        children: [
-          Expanded(
-            child: ListView.builder(
-              controller: _scrollController,
-              itemCount: _messages.length,
-              itemBuilder: (context, index) {
-                return Container(
-                  margin:
-                      const EdgeInsets.symmetric(vertical: 5, horizontal: 10),
-                  alignment: (index % 2 == 0)
-                      ? Alignment.centerRight
-                      : Alignment.centerLeft,
-                  child: Container(
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      color: (index % 2 == 0)
-                          ? Colors.blueAccent.withOpacity(0.8)
-                          : Colors.grey.shade300,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Text(
-                      _messages[index],
-                      style: TextStyle(
-                        color: (index % 2 == 0) ? Colors.white : Colors.black,
-                      ),
-                    ),
-                  ),
-                );
+    return Column(
+      children: [
+        AppBar(
+          title: const Text('Samigo'),
+          actions: [
+            IconButton(
+              icon: Icon(_toSpeech ? Icons.volume_up : Icons.volume_off),
+              onPressed: () {
+                setState(() {
+                  _toSpeech = !_toSpeech;
+                });
               },
             ),
-          ),
-          if (_isLoading)
-            const Padding(
-              padding: EdgeInsets.all(8.0),
-              child: CircularProgressIndicator(),
-            ),
-          Padding(
-            padding: const EdgeInsets.all(15),
-            child: Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _textController,
-                    focusNode: _focusNode,
-                    decoration: const InputDecoration(
-                      hintText: "Enter your command...",
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.all(Radius.circular(10)),
-                      ),
+            if (_speechEnabled)
+              IconButton(
+                icon: Icon(
+                    speechRecognizer.isListening ? Icons.mic : Icons.mic_off),
+                onPressed: () {
+                  if (speechRecognizer.isListening) {
+                    speechRecognizer.stopListening();
+                  } else {
+                    speechRecognizer.startListening(_onSpeechResult);
+                  }
+                  setState(() {});
+                },
+              ),
+          ],
+        ),
+        Expanded(
+          child: ListView.builder(
+            controller: _scrollController,
+            itemCount: _messages.length,
+            itemBuilder: (context, index) {
+              return Container(
+                margin: const EdgeInsets.symmetric(vertical: 5, horizontal: 10),
+                alignment: (index % 2 == 0)
+                    ? Alignment.centerRight
+                    : Alignment.centerLeft,
+                child: Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: (index % 2 == 0)
+                        ? Colors.blueAccent.withOpacity(0.8)
+                        : Colors.grey.shade300,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    _messages[index],
+                    style: TextStyle(
+                      color: (index % 2 == 0) ? Colors.white : Colors.black,
                     ),
-                    onSubmitted: _sendMessage,
                   ),
                 ),
-                const SizedBox(width: 10),
-                IconButton(
-                  icon: const Icon(Icons.send),
-                  onPressed: () => _sendMessage(_textController.text),
-                ),
-              ],
-            ),
+              );
+            },
           ),
-        ],
-      ),
+        ),
+        if (_isLoading)
+          const Padding(
+            padding: EdgeInsets.all(8.0),
+            child: CircularProgressIndicator(),
+          ),
+        Padding(
+          padding: const EdgeInsets.all(15),
+          child: Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _textController,
+                  focusNode: _focusNode,
+                  decoration: const InputDecoration(
+                    hintText: "Enter your command...",
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.all(Radius.circular(10)),
+                    ),
+                  ),
+                  onSubmitted: _sendMessage,
+                ),
+              ),
+              const SizedBox(width: 10),
+              IconButton(
+                icon: const Icon(Icons.send),
+                onPressed: () => _sendMessage(_textController.text),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }
