@@ -90,36 +90,65 @@ class BotState extends State<Bot> {
   @override
   Widget build(BuildContext context) {
     return Column(
-      children: <Widget>[
+      children: [
         Expanded(
           child: ListView.builder(
             controller: _scrollController,
             itemCount: _messages.length,
-            itemBuilder: (BuildContext context, int index) {
-              return ListTile(
-                title: Text(_messages[index]),
+            itemBuilder: (context, index) {
+              return Container(
+                margin: const EdgeInsets.symmetric(vertical: 5, horizontal: 10),
+                alignment: (index % 2 == 0)
+                    ? Alignment.centerRight
+                    : Alignment.centerLeft,
+                child: Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: (index % 2 == 0)
+                        ? Colors.blueAccent.withOpacity(0.8)
+                        : Colors.grey.shade300,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    _messages[index],
+                    style: TextStyle(
+                      color: (index % 2 == 0) ? Colors.white : Colors.black,
+                    ),
+                  ),
+                ),
               );
             },
           ),
         ),
         if (_isLoading)
-          const CircularProgressIndicator()
-        else
-          TextField(
-            controller: _textController,
-            focusNode: _focusNode,
-            decoration: const InputDecoration(
-              hintText: 'Type a message...',
-            ),
-            onSubmitted: (String message) {
-              _sendMessage(message);
-            },
+          const Padding(
+            padding: EdgeInsets.all(8.0),
+            child: CircularProgressIndicator(),
           ),
-        IconButton(
-          icon: const Icon(Icons.send),
-          onPressed: () {
-            _sendMessage(_textController.text);
-          },
+        Padding(
+          padding: const EdgeInsets.all(15),
+          child: Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _textController,
+                  focusNode: _focusNode,
+                  decoration: const InputDecoration(
+                    hintText: "Enter your command...",
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.all(Radius.circular(10)),
+                    ),
+                  ),
+                  onSubmitted: _sendMessage,
+                ),
+              ),
+              const SizedBox(width: 10),
+              IconButton(
+                icon: const Icon(Icons.send),
+                onPressed: () => _sendMessage(_textController.text),
+              ),
+            ],
+          ),
         ),
       ],
     );
