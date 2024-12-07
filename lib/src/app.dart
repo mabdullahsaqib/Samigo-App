@@ -1,7 +1,7 @@
 import 'dart:convert';
-
 import 'package:flutter/material.dart';
 import 'package:http/http.dart';
+import 'tts.dart'; // Import the TTS functionality
 
 class Samigo extends StatelessWidget {
   const Samigo({super.key});
@@ -31,7 +31,9 @@ class BotState extends State<Bot> {
   final ScrollController _scrollController = ScrollController();
   final FocusNode _focusNode = FocusNode();
   final List<String> _messages = <String>[];
+  final TTS _tts = TTS(); // Create a TTS instance
   bool _isLoading = false;
+  bool _toSpeech = true; // Enable or disable TTS responses
 
   final String apiUrl = 'https://samigo.vercel.app/command';
 
@@ -61,15 +63,26 @@ class BotState extends State<Bot> {
         setState(() {
           _messages.add('Samigo: $data');
         });
+        if (_toSpeech) {
+          await _tts.speak(data); // Use TTS to speak the response
+        }
       } else {
+        final errorMessage =
+            'Error : ${response.statusCode} - ${response.body}';
         setState(() {
-          _messages.add('Error : ${response.statusCode} - ${response.body}');
+          _messages.add(errorMessage);
         });
+        if (_toSpeech) {
+          await _tts.speak("An error occurred while processing your request.");
+        }
       }
     } catch (e) {
       setState(() {
         _messages.add('Error : $e');
       });
+      if (_toSpeech) {
+        await _tts.speak("An error occurred while processing your request.");
+      }
     } finally {
       _textController.clear();
       _scrollToBottom();
