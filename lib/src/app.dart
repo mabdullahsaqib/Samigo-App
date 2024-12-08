@@ -115,6 +115,12 @@ class BotState extends State<Bot> {
     );
   }
 
+  void _onSpeechResult(String result) {
+    setState(() {
+      _textController.text = result;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return Column(
@@ -137,9 +143,9 @@ class BotState extends State<Bot> {
                 onPressed: () {
                   if (speechRecognizer.isListening) {
                     speechRecognizer.stopListening();
+                    _sendMessage(_textController.text);
                   } else {
-                    speechRecognizer.startListening();
-                    _textController.text = speechRecognizer.lastWords;
+                    speechRecognizer.startListening(_onSpeechResult);
                   }
                   setState(() {});
                 },
