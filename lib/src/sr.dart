@@ -5,6 +5,7 @@ import 'package:speech_to_text/speech_recognition_error.dart';
 class SpeechRecognizer {
   final SpeechToText _speechToText = SpeechToText();
   bool _isListening = false;
+  String _lastWords = '';
 
   Future<void> initialize() async {
     await _speechToText.initialize(
@@ -15,15 +16,19 @@ class SpeechRecognizer {
 
   bool get isListening => _isListening;
 
-  Future<void> startListening(Function(String) onResult) async {
+  String get lastWords => _lastWords;
+
+  Future<void> startListening() async {
     if (!_isListening) {
       _isListening = true;
       await _speechToText.listen(
-        onResult: (SpeechRecognitionResult result) {
-          onResult(result.recognizedWords);
-        },
+        onResult: _onSpeechResult,
       );
     }
+  }
+
+  void _onSpeechResult(SpeechRecognitionResult result) {
+    _lastWords = result.recognizedWords;
   }
 
   Future<void> stopListening() async {

@@ -49,6 +49,7 @@ class BotState extends State<Bot> {
     speechRecognizer.initialize().then((_) {
       setState(() {
         _speechEnabled = true;
+        print('Speech enabled: $_speechEnabled');
       });
     });
   }
@@ -114,10 +115,6 @@ class BotState extends State<Bot> {
     );
   }
 
-  void _onSpeechResult(String words) {
-    _textController.text = words;
-  }
-
   @override
   Widget build(BuildContext context) {
     return Column(
@@ -141,7 +138,8 @@ class BotState extends State<Bot> {
                   if (speechRecognizer.isListening) {
                     speechRecognizer.stopListening();
                   } else {
-                    speechRecognizer.startListening(_onSpeechResult);
+                    speechRecognizer.startListening();
+                    _textController.text = speechRecognizer.lastWords;
                   }
                   setState(() {});
                 },
