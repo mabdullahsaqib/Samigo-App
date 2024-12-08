@@ -21,6 +21,7 @@ class SpeechRecognizer {
   Future<void> startListening() async {
     if (!_isListening) {
       _isListening = true;
+      print('Listening...');
       await _speechToText.listen(
         onResult: _onSpeechResult,
       );
@@ -28,6 +29,7 @@ class SpeechRecognizer {
   }
 
   void _onSpeechResult(SpeechRecognitionResult result) {
+    print('Result: ${result.recognizedWords}');
     _lastWords = result.recognizedWords;
   }
 
