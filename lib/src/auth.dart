@@ -19,7 +19,7 @@ class _OAuthWebViewState extends State<OAuthWebView> {
   late final WebViewController _controller;
   bool _isLoading = true;
   final String useragent =
-      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/80.0.3987.106 Safari/537.36";
+      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.6876.3 Safari/537.36";
 
   @override
   void initState() {
