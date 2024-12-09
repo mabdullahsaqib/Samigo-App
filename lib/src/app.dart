@@ -1,9 +1,9 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart';
-import 'tts.dart';
-import 'sr.dart';
-import 'auth.dart'; // Import the OAuthWebView
+import 'auth.dart'; // Import the updated AuthService
+import 'tts.dart'; // Import your TTS functionality
+import 'sr.dart'; // Import your SpeechRecognizer functionality
 
 class Samigo extends StatelessWidget {
   const Samigo({super.key});
@@ -38,6 +38,7 @@ class BotState extends State<Bot> {
   bool _speechEnabled = false; // For speech recognition toggle
 
   final String apiUrl = 'https://samigo.vercel.app/command';
+  final AuthService _authService = AuthService();
 
   late TTS tts;
   late SpeechRecognizer speechRecognizer;
@@ -78,35 +79,19 @@ class BotState extends State<Bot> {
 
       if (response.statusCode == 200) {
         final Map<String, dynamic> responseData = jsonDecode(response.body);
+        final String data = responseData['response'] ?? 'No response';
 
-        if (responseData.containsKey('authorization_url')) {
-          // Navigate to authentication flow
-          final String? authCode = await Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => OAuthWebView(
-                authUrl: responseData['authorization_url'],
-                redirectUri: 'https://samigo.vercel.app/',
-              ),
-            ),
-          );
+        setState(() {
+          _messages.add('Samigo: $data');
+        });
 
-          if (authCode != null) {
-            // Send the authorization code back to the server
-            await _sendAuthCode(authCode);
-          } else {
-            setState(() {
-              _messages.add('Authentication canceled by user.');
-            });
-          }
-        } else {
-          final String data = responseData['response'] ?? 'No response';
-          setState(() {
-            _messages.add('Samigo: $data');
-          });
-          if (_toSpeech) {
-            tts.speak(data);
-          }
+        if (responseData['status'] == 'auth_required') {
+          await _authenticateAndSendToken();
+          return;
+        }
+
+        if (_toSpeech) {
+          tts.speak(data);
         }
       } else {
         setState(() {
@@ -132,16 +117,33 @@ class BotState extends State<Bot> {
     }
   }
 
-  Future<void> _sendAuthCode(String authCode) async {
+  Future<void> _authenticateAndSendToken() async {
     try {
+      setState(() {
+        _messages.add('Initiating Google authentication...');
+      });
+
+      final String? token = await _authService.authenticateAndGetToken();
+
+      if (token == null) {
+        setState(() {
+          _messages.add('Authentication canceled by user.');
+        });
+        return;
+      }
+
+      setState(() {
+        _messages.add('Authentication successful! Sending token to backend...');
+      });
+
       final Response response = await post(
         Uri.parse(apiUrl),
         headers: <String, String>{
           'Content-Type': 'application/json',
         },
         body: jsonEncode(<String, String>{
-          'command': 'auth_code',
-          'auth_code': authCode,
+          'command': 'auth_token',
+          'token': token,
         }),
       );
 
@@ -163,7 +165,7 @@ class BotState extends State<Bot> {
       }
     } catch (e) {
       setState(() {
-        _messages.add('Error sending auth code: $e');
+        _messages.add('Error during authentication: $e');
       });
       if (_toSpeech) {
         tts.speak('There was an error processing your request.');
