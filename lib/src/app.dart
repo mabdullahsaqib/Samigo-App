@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart';
 import 'tts.dart';
 import 'sr.dart';
+import 'auth.dart'; // Import the OAuthWebView
 
 class Samigo extends StatelessWidget {
   const Samigo({super.key});
@@ -76,16 +77,40 @@ class BotState extends State<Bot> {
       );
 
       if (response.statusCode == 200) {
-        final String data = response.body;
-        setState(() {
-          _messages.add('Samigo: $data');
-        });
-        if (_toSpeech) {
-          tts.speak(data);
+        final Map<String, dynamic> responseData = jsonDecode(response.body);
+
+        if (responseData.containsKey('authorization_url')) {
+          // Navigate to authentication flow
+          final String? authCode = await Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => OAuthWebView(
+                authUrl: responseData['authorization_url'],
+                redirectUri: 'https://samigo.vercel.app/',
+              ),
+            ),
+          );
+
+          if (authCode != null) {
+            // Send the authorization code back to the server
+            await _sendAuthCode(authCode);
+          } else {
+            setState(() {
+              _messages.add('Authentication canceled by user.');
+            });
+          }
+        } else {
+          final String data = responseData['response'] ?? 'No response';
+          setState(() {
+            _messages.add('Samigo: $data');
+          });
+          if (_toSpeech) {
+            tts.speak(data);
+          }
         }
       } else {
         setState(() {
-          _messages.add('Error : ${response.statusCode} - ${response.body}');
+          _messages.add('Error: ${response.statusCode} - ${response.body}');
         });
         if (_toSpeech) {
           tts.speak('There was an error processing your request.');
@@ -93,7 +118,7 @@ class BotState extends State<Bot> {
       }
     } catch (e) {
       setState(() {
-        _messages.add('Error : $e');
+        _messages.add('Error: $e');
       });
       if (_toSpeech) {
         tts.speak('There was an error processing your request.');
@@ -104,6 +129,45 @@ class BotState extends State<Bot> {
       setState(() {
         _isLoading = false;
       });
+    }
+  }
+
+  Future<void> _sendAuthCode(String authCode) async {
+    try {
+      final Response response = await post(
+        Uri.parse(apiUrl),
+        headers: <String, String>{
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode(<String, String>{
+          'command': 'auth_code',
+          'auth_code': authCode,
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        final String data = response.body;
+        setState(() {
+          _messages.add('Samigo: $data');
+        });
+        if (_toSpeech) {
+          tts.speak(data);
+        }
+      } else {
+        setState(() {
+          _messages.add('Error: ${response.statusCode} - ${response.body}');
+        });
+        if (_toSpeech) {
+          tts.speak('There was an error processing your request.');
+        }
+      }
+    } catch (e) {
+      setState(() {
+        _messages.add('Error sending auth code: $e');
+      });
+      if (_toSpeech) {
+        tts.speak('There was an error processing your request.');
+      }
     }
   }
 
