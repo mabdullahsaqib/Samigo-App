@@ -18,12 +18,15 @@ class OAuthWebView extends StatefulWidget {
 class _OAuthWebViewState extends State<OAuthWebView> {
   late final WebViewController _controller;
   bool _isLoading = true;
+  final String useragent =
+      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/80.0.3987.106 Safari/537.36";
 
   @override
   void initState() {
     super.initState();
     _controller = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
+      ..setUserAgent(useragent) // Set the user agent here
       ..setNavigationDelegate(
         NavigationDelegate(
           onProgress: (int progress) {
@@ -43,7 +46,6 @@ class _OAuthWebViewState extends State<OAuthWebView> {
           },
           onNavigationRequest: (NavigationRequest request) {
             if (request.url.startsWith(widget.redirectUri)) {
-              _handleRedirect(request.url);
               return NavigationDecision.prevent;
             }
             return NavigationDecision.navigate;
