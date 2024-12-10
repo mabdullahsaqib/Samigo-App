@@ -123,9 +123,6 @@ class BotState extends State<Bot> {
         bearerToken = token; // Save the Bearer Token for future requests
         _messages.add('Authentication successful! Bearer Token set.');
       });
-
-      // Optionally, send a follow-up request to validate the token on the server
-      await _sendMessage("Token authenticated successfully!");
     } catch (e) {
       _handleError(null, e.toString());
     }
