@@ -68,8 +68,8 @@ class BotState extends State<Bot> {
 
     try {
       final headers = {
-        'Content-Type': 'application/json',
         if (bearerToken != null) 'Authorization': 'Bearer $bearerToken',
+        'Content-Type': 'application/json',
       };
 
       final Response response = await post(
