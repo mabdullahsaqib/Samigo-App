@@ -1,9 +1,9 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart';
-import 'auth.dart'; // Import updated AuthService
-import 'tts.dart'; // Import TTS functionality
-import 'sr.dart'; // Import SpeechRecognizer functionality
+import 'auth.dart'; // Updated AuthService for Bearer Token flow
+import 'tts.dart'; // TTS functionality
+import 'sr.dart'; // SpeechRecognizer functionality
 
 class Samigo extends StatelessWidget {
   const Samigo({super.key});
@@ -42,6 +42,7 @@ class BotState extends State<Bot> {
 
   late TTS tts;
   late SpeechRecognizer speechRecognizer;
+  String? bearerToken; // To store the dynamically generated Bearer Token
 
   @override
   void initState() {
@@ -66,9 +67,14 @@ class BotState extends State<Bot> {
     });
 
     try {
+      final headers = {
+        'Content-Type': 'application/json',
+        if (bearerToken != null) 'Authorization': 'Bearer $bearerToken',
+      };
+
       final Response response = await post(
         Uri.parse(apiUrl),
-        headers: {'Content-Type': 'application/json'},
+        headers: headers,
         body: jsonEncode({'command': message}),
       );
 
@@ -81,7 +87,7 @@ class BotState extends State<Bot> {
         });
 
         if (responseData['status'] == 'auth_required') {
-          await _authenticateAndSendToken();
+          await _authenticateAndSetBearerToken();
           return;
         }
 
@@ -98,45 +104,28 @@ class BotState extends State<Bot> {
     }
   }
 
-  Future<void> _authenticateAndSendToken() async {
+  Future<void> _authenticateAndSetBearerToken() async {
     try {
       setState(() {
-        _messages.add('Initiating Google authentication...');
+        _messages.add('Authenticating with Google...');
       });
 
       final token = await _authService.authenticateAndGetToken();
 
       if (token == null) {
         setState(() {
-          _messages.add('Authentication canceled.');
+          _messages.add('Authentication canceled by user.');
         });
         return;
       }
 
       setState(() {
-        _messages.add('Authentication successful! Sending token...');
+        bearerToken = token; // Save the Bearer Token for future requests
+        _messages.add('Authentication successful! Bearer Token set.');
       });
 
-      final Response response = await post(
-        Uri.parse(apiUrl),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({'command': 'auth_token', 'token': token}),
-      );
-
-      if (response.statusCode == 200) {
-        final Map<String, dynamic> responseData = jsonDecode(response.body);
-        final String data = responseData['response'] ?? 'No response';
-
-        setState(() {
-          _messages.add('Samigo: $data');
-        });
-
-        if (_toSpeech) {
-          tts.speak(data);
-        }
-      } else {
-        _handleError(response.statusCode, response.body);
-      }
+      // Optionally, send a follow-up request to validate the token on the server
+      await _sendMessage("Token authenticated successfully!");
     } catch (e) {
       _handleError(null, e.toString());
     }
