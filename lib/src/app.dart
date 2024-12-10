@@ -123,7 +123,7 @@ class BotState extends State<Bot> {
         _messages.add('Initiating Google authentication...');
       });
 
-      final String? token = await _authService.authenticateAndGetToken();
+      final token = await _authService.getAuthDetails();
 
       if (token == null) {
         setState(() {
@@ -143,7 +143,7 @@ class BotState extends State<Bot> {
         },
         body: jsonEncode(<String, String>{
           'command': 'auth_token',
-          'token': token,
+          'token': token.toString(),
         }),
       );
 
