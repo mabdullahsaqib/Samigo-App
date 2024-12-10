@@ -1,9 +1,9 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart';
-import 'auth.dart'; // Import the updated AuthService
-import 'tts.dart'; // Import your TTS functionality
-import 'sr.dart'; // Import your SpeechRecognizer functionality
+import 'auth.dart'; // Import updated AuthService
+import 'tts.dart'; // Import TTS functionality
+import 'sr.dart'; // Import SpeechRecognizer functionality
 
 class Samigo extends StatelessWidget {
   const Samigo({super.key});
@@ -34,8 +34,8 @@ class BotState extends State<Bot> {
   final FocusNode _focusNode = FocusNode();
   final List<String> _messages = <String>[];
   bool _isLoading = false;
-  bool _toSpeech = false; // For TTS toggle
-  bool _speechEnabled = false; // For speech recognition toggle
+  bool _toSpeech = false; // TTS toggle
+  bool _speechEnabled = false; // Speech recognition toggle
 
   final String apiUrl = 'https://samigo.vercel.app/command';
   final AuthService _authService = AuthService();
@@ -48,18 +48,17 @@ class BotState extends State<Bot> {
     super.initState();
     tts = TTS();
     speechRecognizer = SpeechRecognizer();
+
     speechRecognizer.initialize().then((_) {
       setState(() {
         _speechEnabled = true;
-        print('Speech enabled: $_speechEnabled');
+        print('Speech recognition initialized: $_speechEnabled');
       });
     });
   }
 
   Future<void> _sendMessage(String message) async {
-    if (message.isEmpty) {
-      return;
-    }
+    if (message.isEmpty) return;
 
     setState(() {
       _messages.add('You: $message');
@@ -69,12 +68,8 @@ class BotState extends State<Bot> {
     try {
       final Response response = await post(
         Uri.parse(apiUrl),
-        headers: <String, String>{
-          'Content-Type': 'application/json',
-        },
-        body: jsonEncode(<String, String>{
-          'command': message,
-        }),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'command': message}),
       );
 
       if (response.statusCode == 200) {
@@ -94,26 +89,12 @@ class BotState extends State<Bot> {
           tts.speak(data);
         }
       } else {
-        setState(() {
-          _messages.add('Error: ${response.statusCode} - ${response.body}');
-        });
-        if (_toSpeech) {
-          tts.speak('There was an error processing your request.');
-        }
+        _handleError(response.statusCode, response.body);
       }
     } catch (e) {
-      setState(() {
-        _messages.add('Error: $e');
-      });
-      if (_toSpeech) {
-        tts.speak('There was an error processing your request.');
-      }
+      _handleError(null, e.toString());
     } finally {
-      _textController.clear();
-      _scrollToBottom();
-      setState(() {
-        _isLoading = false;
-      });
+      _resetInputState();
     }
   }
 
@@ -127,50 +108,60 @@ class BotState extends State<Bot> {
 
       if (token == null) {
         setState(() {
-          _messages.add('Authentication canceled by user.');
+          _messages.add('Authentication canceled.');
         });
         return;
       }
 
       setState(() {
-        _messages.add('Authentication successful! Sending token to backend...');
+        _messages.add('Authentication successful! Sending token...');
       });
 
       final Response response = await post(
         Uri.parse(apiUrl),
-        headers: <String, String>{
-          'Content-Type': 'application/json',
-        },
-        body: jsonEncode(<String, String>{
-          'command': 'auth_token',
-          'token': token,
-        }),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'command': 'auth_token', 'token': token}),
       );
 
       if (response.statusCode == 200) {
-        final String data = response.body;
+        final Map<String, dynamic> responseData = jsonDecode(response.body);
+        final String data = responseData['response'] ?? 'No response';
+
         setState(() {
           _messages.add('Samigo: $data');
         });
+
         if (_toSpeech) {
           tts.speak(data);
         }
       } else {
-        setState(() {
-          _messages.add('Error: ${response.statusCode} - ${response.body}');
-        });
-        if (_toSpeech) {
-          tts.speak('There was an error processing your request.');
-        }
+        _handleError(response.statusCode, response.body);
       }
     } catch (e) {
-      setState(() {
-        _messages.add('Error during authentication: $e');
-      });
-      if (_toSpeech) {
-        tts.speak('There was an error processing your request.');
-      }
+      _handleError(null, e.toString());
     }
+  }
+
+  void _handleError(int? statusCode, String errorMessage) {
+    final String message = statusCode != null
+        ? 'Error $statusCode: $errorMessage'
+        : 'Error: $errorMessage';
+
+    setState(() {
+      _messages.add(message);
+    });
+
+    if (_toSpeech) {
+      tts.speak('An error occurred while processing your request.');
+    }
+  }
+
+  void _resetInputState() {
+    _textController.clear();
+    _scrollToBottom();
+    setState(() {
+      _isLoading = false;
+    });
   }
 
   void _scrollToBottom() {
@@ -205,7 +196,8 @@ class BotState extends State<Bot> {
             if (_speechEnabled)
               IconButton(
                 icon: Icon(
-                    speechRecognizer.isListening ? Icons.mic : Icons.mic_off),
+                  speechRecognizer.isListening ? Icons.mic : Icons.mic_off,
+                ),
                 onPressed: () {
                   if (speechRecognizer.isListening) {
                     speechRecognizer.stopListening();
@@ -223,15 +215,16 @@ class BotState extends State<Bot> {
             controller: _scrollController,
             itemCount: _messages.length,
             itemBuilder: (context, index) {
+              final isUserMessage = index % 2 == 0;
               return Container(
                 margin: const EdgeInsets.symmetric(vertical: 5, horizontal: 10),
-                alignment: (index % 2 == 0)
+                alignment: isUserMessage
                     ? Alignment.centerRight
                     : Alignment.centerLeft,
                 child: Container(
                   padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                    color: (index % 2 == 0)
+                    color: isUserMessage
                         ? Colors.blueAccent.withOpacity(0.8)
                         : Colors.grey.shade300,
                     borderRadius: BorderRadius.circular(8),
@@ -239,7 +232,7 @@ class BotState extends State<Bot> {
                   child: Text(
                     _messages[index],
                     style: TextStyle(
-                      color: (index % 2 == 0) ? Colors.white : Colors.black,
+                      color: isUserMessage ? Colors.white : Colors.black,
                     ),
                   ),
                 ),
