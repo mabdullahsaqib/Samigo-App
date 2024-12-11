@@ -3,12 +3,14 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class SOSPage extends StatefulWidget {
+  const SOSPage({super.key});
+
   @override
-  _SOSPageState createState() => _SOSPageState();
+  SOSPageState createState() => SOSPageState();
 }
 
-class _SOSPageState extends State<SOSPage> {
-  TextEditingController _numberController = TextEditingController();
+class SOSPageState extends State<SOSPage> {
+  final TextEditingController _numberController = TextEditingController();
   String? _emergencyNumber;
 
   @override
@@ -36,7 +38,7 @@ class _SOSPageState extends State<SOSPage> {
   Future<void> _callEmergencyNumber() async {
     if (_emergencyNumber == null || _emergencyNumber!.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Please set an emergency number first!')),
+        const SnackBar(content: Text('Please set an emergency number first!')),
       );
       return;
     }
@@ -45,6 +47,7 @@ class _SOSPageState extends State<SOSPage> {
     if (await canLaunchUrl(callUri)) {
       await launchUrl(callUri);
     } else {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Failed to call $_emergencyNumber')),
       );
@@ -55,7 +58,7 @@ class _SOSPageState extends State<SOSPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('SOS Feature'),
+        title: const Text('SOS Feature'),
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -66,7 +69,7 @@ class _SOSPageState extends State<SOSPage> {
             TextField(
               controller: _numberController,
               keyboardType: TextInputType.phone,
-              decoration: InputDecoration(
+              decoration: const InputDecoration(
                 labelText: 'Emergency Number',
                 border: OutlineInputBorder(),
               ),
@@ -74,14 +77,15 @@ class _SOSPageState extends State<SOSPage> {
                 _saveEmergencyNumber(value);
               },
             ),
-            SizedBox(height: 20),
+            const SizedBox(height: 20),
             ElevatedButton(
               onPressed: _callEmergencyNumber,
-              child: Text('Call Emergency Number'),
               style: ElevatedButton.styleFrom(
-                iconColor: Colors.red,
-                padding: EdgeInsets.symmetric(vertical: 16),
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                foregroundColor: Colors.white,
+                backgroundColor: Colors.red,
               ),
+              child: const Text('Call Emergency Number'),
             ),
           ],
         ),
