@@ -11,9 +11,9 @@ class SOSPage extends StatefulWidget {
 }
 
 class SOSPageState extends State<SOSPage> {
-  List<Map<String, String>> _contacts = [];
   final TextEditingController _labelController = TextEditingController();
   final TextEditingController _numberController = TextEditingController();
+  List<Map<String, String>> _contacts = [];
 
   @override
   void initState() {
@@ -23,17 +23,42 @@ class SOSPageState extends State<SOSPage> {
 
   Future<void> _loadContacts() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
-    String? contactsJson = prefs.getString('emergency_contacts');
-    setState(() {
-      _contacts = contactsJson != null
-          ? List<Map<String, String>>.from(jsonDecode(contactsJson))
-          : [];
-    });
+    final String? savedContacts = prefs.getString('sos_contacts');
+    if (savedContacts != null) {
+      setState(() {
+        _contacts = (jsonDecode(savedContacts) as List)
+            .map((item) => Map<String, String>.from(item))
+            .toList();
+      });
+    }
   }
 
   Future<void> _saveContacts() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
-    await prefs.setString('emergency_contacts', jsonEncode(_contacts));
+    await prefs.setString('sos_contacts', jsonEncode(_contacts));
+  }
+
+  void _addContact(String label, String number) {
+    if (label.isEmpty || number.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+            content: Text('Both label and number must be provided.')),
+      );
+      return;
+    }
+    setState(() {
+      _contacts.add({'label': label, 'number': number});
+    });
+    _saveContacts();
+    _labelController.clear();
+    _numberController.clear();
+  }
+
+  void _deleteContact(int index) {
+    setState(() {
+      _contacts.removeAt(index);
+    });
+    _saveContacts();
   }
 
   Future<void> _callNumber(String number) async {
@@ -46,33 +71,6 @@ class SOSPageState extends State<SOSPage> {
         SnackBar(content: Text('Failed to call $number')),
       );
     }
-  }
-
-  void _addContact() {
-    String label = _labelController.text.trim();
-    String number = _numberController.text.trim();
-
-    if (label.isEmpty || number.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Both label and number are required!')),
-      );
-      return;
-    }
-
-    setState(() {
-      _contacts.add({'label': label, 'number': number});
-      _labelController.clear();
-      _numberController.clear();
-    });
-
-    _saveContacts();
-  }
-
-  void _removeContact(int index) {
-    setState(() {
-      _contacts.removeAt(index);
-    });
-    _saveContacts();
   }
 
   @override
@@ -100,12 +98,11 @@ class SOSPageState extends State<SOSPage> {
                         children: [
                           IconButton(
                             icon: const Icon(Icons.call, color: Colors.green),
-                            onPressed: () =>
-                                _callNumber(contact['number'] ?? ''),
+                            onPressed: () => _callNumber(contact['number']!),
                           ),
                           IconButton(
                             icon: const Icon(Icons.delete, color: Colors.red),
-                            onPressed: () => _removeContact(index),
+                            onPressed: () => _deleteContact(index),
                           ),
                         ],
                       ),
@@ -114,7 +111,7 @@ class SOSPageState extends State<SOSPage> {
                 },
               ),
             ),
-            const SizedBox(height: 20),
+            const Divider(),
             TextField(
               controller: _labelController,
               decoration: const InputDecoration(
@@ -131,16 +128,20 @@ class SOSPageState extends State<SOSPage> {
                 border: OutlineInputBorder(),
               ),
             ),
-            const SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: _addContact,
+            const SizedBox(height: 10),
+            ElevatedButton.icon(
+              onPressed: () => _addContact(
+                _labelController.text.trim(),
+                _numberController.text.trim(),
+              ),
+              icon: const Icon(Icons.add),
+              label: const Text('Add Contact'),
               style: ElevatedButton.styleFrom(
                 padding:
                     const EdgeInsets.symmetric(vertical: 16, horizontal: 32),
                 foregroundColor: Colors.white,
                 backgroundColor: Colors.blue,
               ),
-              child: const Text('Add Contact'),
             ),
           ],
         ),
