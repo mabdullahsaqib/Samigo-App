@@ -1,9 +1,12 @@
 import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:http/http.dart';
+
 import 'auth.dart'; // Updated AuthService for Bearer Token flow
-import 'tts.dart'; // TTS functionality
+import 'sos.dart'; // SOS feature
 import 'sr.dart'; // SpeechRecognizer functionality
+import 'tts.dart'; // TTS functionality
 
 class Samigo extends StatelessWidget {
   const Samigo({super.key});
@@ -12,10 +15,19 @@ class Samigo extends StatelessWidget {
   Widget build(BuildContext context) {
     return const MaterialApp(
       title: 'Samigo',
-      home: Scaffold(
-        body: Center(
-          child: Bot(),
-        ),
+      home: SamigoHome(),
+    );
+  }
+}
+
+class SamigoHome extends StatelessWidget {
+  const SamigoHome({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const Scaffold(
+      body: Center(
+        child: Bot(),
       ),
     );
   }
@@ -194,6 +206,15 @@ class BotState extends State<Bot> {
                   setState(() {});
                 },
               ),
+            IconButton(
+              icon: const Icon(Icons.warning),
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => SOSPage()),
+                );
+              },
+            ),
           ],
         ),
         Expanded(
