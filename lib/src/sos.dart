@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'dart:convert';
 
 class SOSPage extends StatefulWidget {
@@ -61,14 +62,24 @@ class SOSPageState extends State<SOSPage> {
     _saveContacts();
   }
 
-  Future<void> _callNumber(String number) async {
-    final Uri callUri = Uri(scheme: 'tel', path: number);
-    if (await canLaunchUrl(callUri)) {
-      await launchUrl(callUri);
+  Future<void> _callNumber(String phoneNumber) async {
+    // Check for permission
+    if (await Permission.phone.request().isGranted) {
+      // Make the call
+      final Uri callUri = Uri(scheme: 'tel', path: phoneNumber);
+      if (await canLaunchUrl(callUri)) {
+        await launchUrl(callUri);
+      } else {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to initiate a call to $phoneNumber')),
+        );
+      }
     } else {
+      // Permission denied
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to call $number')),
+        const SnackBar(content: Text('Phone call permission is required')),
       );
     }
   }
