@@ -3,7 +3,7 @@
 # separate terms of service, privacy policy, and support
 # documentation.
 
-name: Dart
+name: Samigo
 
 on:
   push:
@@ -33,7 +33,23 @@ jobs:
 
       - name: Install dependencies
         run: flutter pub get
+
+      - name: Decode Keystore
+        env:
+          ENCODED_STRING: ${{ secrets.KEYSTORE_BASE_64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEYSTORE_ALIAS: ${{ secrets.KEYSTORE_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+
+        run: |
+          echo $ENCODED_STRING > keystore-b64.txt
+          base64 -d keystore-b64.txt > keystore.jks
+        
       - name: Build APK
+        env:
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEYSTORE_ALIAS: ${{ secrets.KEYSTORE_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: flutter build apk --release
 
       # Uncomment this step to verify the use of 'dart format' on each commit.
